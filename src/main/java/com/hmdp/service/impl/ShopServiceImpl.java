@@ -38,7 +38,7 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
     private static final ExecutorService CACHE_REBUILD_EXECUTOR = Executors.newFixedThreadPool(10);
 
     @Override
-    public Result<Shop> queryById(Long id) {
+    public Result<Shop> queryById(Long id) throws InterruptedException {
 
         // 解决缓存穿透
         // Shop shop = queryWithPassThrough(id);
@@ -58,7 +58,7 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
     }
 
     // 逻辑过期
-    public Shop queryWithLogicalExpire(Long id) {
+    public Shop queryWithLogicalExpire(Long id) throws InterruptedException {
         String key = CACHE_SHOP_KEY + id;
 
         // 1.从Redis查询商铺缓存
@@ -66,8 +66,10 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
 
         // 2.判断是否存在
         if (StrUtil.isBlank(shopJson)) {
-            // 3.缓存不存在,查询MySQL返回店铺信息
-            return this.getById(id);
+            // 3.缓存不存在
+            Shop shop = this.getById(id);
+            this.saveShop2Redis(id, 20L);
+            return shop;
         }
 
         // 4.缓存存在,需要把JSON反序列化为对象
@@ -82,8 +84,7 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
             return shop;
         }
 
-        // 5.2已过期,需要缓存重建
-
+        // 已过期,需要缓存重建
         // 6.1获取互斥锁
         String lockKey = LOCK_SHOP_KEY + id;
         boolean flag = tryLock(lockKey);
@@ -103,7 +104,7 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
                 } catch (Exception e) {
                     throw new RuntimeException(e);
                 } finally {
-                    //释放锁
+                    // 释放锁
                     unlock(lockKey);
                 }
             });
