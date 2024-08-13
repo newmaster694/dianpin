@@ -25,7 +25,9 @@ public class MvcConfig implements WebMvcConfigurer {
                 "/shop/**",
                 "/shop-type/**",
                 "/voucher/**",
-                "/upload/**"
+                "/upload/**",
+                "/blog/{id}",
+                "/blog/likes/{id}"
         ).order(1);
 
         //配置token刷新拦截器
