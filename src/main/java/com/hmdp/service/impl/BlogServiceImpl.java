@@ -1,6 +1,7 @@
 package com.hmdp.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.hmdp.dto.Result;
@@ -123,12 +124,15 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
             return Result.ok(Collections.emptyList());
         }
 
+        //到这里按照时间戳查询出来的id顺序都是正确的
         List<Long> ids = top5.stream().map(Long::valueOf).collect(Collectors.toList());
 
+        String idStr = StrUtil.join(",", ids);
+
         //3.根据id查询出用户列表(List<UserDTO>)
-        List<UserDTO> userDTOS = userService.listByIds(ids)
-                .stream()
-                .map(user -> BeanUtil.copyProperties(user, UserDTO.class))
+        List<UserDTO> userDTOS = userService.query()
+                .in("id", ids).last("ORDER BY FIELD(id," + idStr + ")").list()
+                .stream().map(user -> BeanUtil.copyProperties(user, UserDTO.class))
                 .collect(Collectors.toList());
 
         //4.返回结果
