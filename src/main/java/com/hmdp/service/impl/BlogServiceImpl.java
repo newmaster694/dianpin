@@ -1,6 +1,6 @@
 package com.hmdp.service.impl;
 
-import cn.hutool.core.util.BooleanUtil;
+import cn.hutool.core.bean.BeanUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.hmdp.dto.Result;
@@ -16,7 +16,10 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
+import java.util.Collections;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import static com.hmdp.utils.RedisConstants.BLOG_LIKED_KEY;
 
@@ -77,37 +80,66 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
 
         // 判断当前用户是否已经点赞(在Redis的set集合中做判断)
         String Key = BLOG_LIKED_KEY + id;
-        Boolean isMember = stringRedisTemplate.opsForSet().isMember(Key, userId.toString());
+        Double score = stringRedisTemplate.opsForZSet().score(Key, userId.toString());
 
         // 为什么使用工具类判断不直接判断? 因为这是一个包装类,会有空值的可能
-        if (BooleanUtil.isFalse(isMember)) {
+        if (score == null) {
             /*不在Set集合里面,未点赞,可以点赞*/
-
             // 数据库点赞数+1
             boolean isSuccess = update().setSql("liked = liked + 1").eq("id", id).update();
 
             if (isSuccess) {
-                //更新成功,保存用户到Redis集合中
-                stringRedisTemplate.opsForSet().add(Key, userId.toString());
+                //更新成功,保存用户到Redis集合中 zadd key value score
+                stringRedisTemplate.opsForZSet().add(Key, userId.toString(), System.currentTimeMillis());
             }
         } else {
             /*在Set集合里面,已点赞,取消点赞*/
-
             // 数据库点赞数-1
             boolean isSuccess = update().setSql("liked = liked - 1").eq("id", id).update();
 
             if (isSuccess) {
                 //更新成功,把用户从Redis的set集合中移除
-                stringRedisTemplate.opsForSet().remove(Key, userId.toString());
+                stringRedisTemplate.opsForZSet().remove(Key, userId.toString());
             }
         }
         return Result.ok();
+    }
+
+    /**
+     * <p>点赞排行功能</p>
+     * <p>需求:显示出点赞排行前TOP5的用户(时间戳排序)</p>
+     *
+     * @param id 博客id
+     * @return Result
+     */
+    @Override
+    public Result<List<UserDTO>> queryBlogLikes(Long id) {
+        //1.查询出top5的点赞用户 zrange key 0 4
+        String key = BLOG_LIKED_KEY + id;
+        Set<String> top5 = stringRedisTemplate.opsForZSet().range(key, 0, 4);
+
+        //2.解析出其中的用户ID
+        if (top5 == null || top5.isEmpty()) {
+            return Result.ok(Collections.emptyList());
+        }
+
+        List<Long> ids = top5.stream().map(Long::valueOf).collect(Collectors.toList());
+
+        //3.根据id查询出用户列表(List<UserDTO>)
+        List<UserDTO> userDTOS = userService.listByIds(ids)
+                .stream()
+                .map(user -> BeanUtil.copyProperties(user, UserDTO.class))
+                .collect(Collectors.toList());
+
+        //4.返回结果
+        return Result.ok(userDTOS);
     }
 
     private void isBlogLiked(Blog blog) {
         // 获取登录用户
         UserDTO user = UserHolder.getUser();
         if (user == null) {
+            // 用户未登录,无需查询是否已点赞
             return;
         }
 
@@ -115,9 +147,9 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
 
         // 判断当前用户是否已经点赞(在Redis的set集合中做判断)
         String Key = BLOG_LIKED_KEY + blog.getId();
-        Boolean isMember = stringRedisTemplate.opsForSet().isMember(Key, userId.toString());
+        Double score = stringRedisTemplate.opsForZSet().score(Key, userId.toString());
 
-        blog.setIsLike(BooleanUtil.isTrue(isMember));
+        blog.setIsLike(score != null);
     }
 
     private void queryBlogUser(Blog blog) {
