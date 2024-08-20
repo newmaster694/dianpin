@@ -3,6 +3,7 @@ package com.hmdp.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.hmdp.dto.Result;
+import com.hmdp.dto.ScrollResult;
 import com.hmdp.dto.UserDTO;
 import com.hmdp.entity.Blog;
 import com.hmdp.service.IBlogService;
@@ -35,6 +36,7 @@ public class BlogController {
 
     /**
      * 点赞功能
+     *
      * @param id 笔记的ID
      * @return
      */
@@ -81,5 +83,18 @@ public class BlogController {
         // 获取当前页数据
         List<Blog> records = page.getRecords();
         return Result.ok(records);
+    }
+
+    /**
+     * 分页查询接收邮箱
+     * @param max 上一次查询的最小时间戳/这一次查询的最大时间戳
+     * @param offset 偏移量
+     * @return Result<ScrollResult>
+     */
+    @GetMapping("/of/follow")
+    public Result<ScrollResult> queryBlogOfFollow(
+            @RequestParam("lastId") Long max,
+            @RequestParam(value = "offset", defaultValue = "0") Integer offset) {
+        return blogService.queryBlogOfFollow(max, offset);
     }
 }
