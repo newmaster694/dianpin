@@ -21,10 +21,7 @@ import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static com.hmdp.utils.RedisConstants.BLOG_LIKED_KEY;
@@ -200,10 +197,10 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
         int count_offset = 1;
         for (ZSetOperations.TypedTuple<String> typedTuple : typedTuples) {
             // 获取id并添加到集合中
-            ids.add(Long.valueOf(typedTuple.getValue()));
+            ids.add(Long.valueOf(Objects.requireNonNull(typedTuple.getValue())));
 
             // 获取分数(时间戳)
-            long time = typedTuple.getScore().longValue();
+            long time = Objects.requireNonNull(typedTuple.getScore()).longValue();
             if (time == minTime) {
                 count_offset++;
             } else {
