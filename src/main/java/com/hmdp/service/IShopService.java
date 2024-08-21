@@ -4,6 +4,8 @@ import com.hmdp.dto.Result;
 import com.hmdp.entity.Shop;
 import com.baomidou.mybatisplus.extension.service.IService;
 
+import java.util.List;
+
 /**
  * <p>
  *  服务类
@@ -17,4 +19,6 @@ public interface IShopService extends IService<Shop> {
     Result<Shop> queryById(Long id) throws InterruptedException;
 
     Result<Object> update(Shop shop);
+
+    Result<List<Shop>> queryShopByType(Integer typeId, Integer current, Double x, Double y);
 }
