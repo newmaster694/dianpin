@@ -22,4 +22,6 @@ public interface IUserService extends IService<User> {
     Result<String> login(LoginFormDTO loginForm, HttpSession session);
 
     Result<Object> sign();
+
+    Result<Integer> signCount();
 }
