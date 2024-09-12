@@ -104,13 +104,13 @@ class HmDianPingApplicationTests {
 
     @Test
     void shopLoadData() {
-        //查询店铺信息
+        // 查询店铺信息
         List<Shop> list = shopService.list();
 
-        //把店铺按照typeId进行分组,id一致的放到一个集合
+        // 把店铺按照typeId进行分组,id一致的放到一个集合
         Map<Long, List<Shop>> map = list.stream().collect(Collectors.groupingBy(Shop::getTypeId));
 
-        //分批完成写入Redis
+        // 分批完成写入Redis
         for (Map.Entry<Long, List<Shop>> entry : map.entrySet()) {
             // 3.1.获取类型id
             Long typeId = entry.getKey();
@@ -130,5 +130,23 @@ class HmDianPingApplicationTests {
 
             stringRedisTemplate.opsForGeo().add(key, locations);
         }
+    }
+
+    @Test
+    void testHyperLogLog() {
+        String[] values = new String[1000];
+
+        int j = 0;
+        for (int i = 0; i < 1000000; i++) {
+            j = i % 1000;
+            values[j] = "user_" + i;
+            if (j == 999) {
+                // 发送到Redis
+                stringRedisTemplate.opsForHyperLogLog().add("hl2", values);
+            }
+        }
+        // 统计
+        Long count = stringRedisTemplate.opsForHyperLogLog().size("hl2");
+        System.out.println("count=" + count);
     }
 }

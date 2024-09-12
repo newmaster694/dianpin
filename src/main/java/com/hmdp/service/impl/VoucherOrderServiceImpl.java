@@ -149,25 +149,6 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
         }
     }
 
-    // 内部类用于线程池处理的任务
-    // 当初始化完毕后，就会去从对列中去拿信息
-/*    private class VoucherOrderHandler implements Runnable {
-        @Override
-        public void run() {
-            while (true) {
-                try {
-                    // 1.获取队列中的订单信息
-                    VoucherOrder voucherOrder = orderTasks.take();
-
-                    // 2.创建订单
-                    handlerVoucherOrder(voucherOrder);
-                } catch (Exception e) {
-                    log.error("未处理订单异常", e);
-                }
-            }
-        }
-    }*/
-
     private void handlerVoucherOrder(VoucherOrder voucherOrder) {
         proxy.createVoucherOrder(voucherOrder);
     }
@@ -200,87 +181,6 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
         // 3.返回订单id
         return Result.ok(orderId);
     }
-
-/*    @Override
-    public Result<Long> seckillVoucher(Long voucherId) {
-        // 获取用户
-        Long currentUserId = UserHolder.getUser().getId();
-
-        // 1.执行lua脚本
-        Long result = stringRedisTemplate.execute(
-                SECKILL_SCRIPT,
-                Collections.emptyList(),
-                voucherId.toString(), currentUserId.toString()
-        );
-
-        // 2.判断返回结果是否为0
-        int r = result.intValue();
-        if (r != 0) {
-            // 2.1返回结果为不为0,代表没有购买资格
-            return Result.fail(r == 1 ? "库存不足" : "不能重复下单");
-        }
-
-        // 2.2返回结果为0,代表有购买资格
-        Long orderId = redisIdWorker.nextId("order");
-
-        // 保存到阻塞队列
-        VoucherOrder voucherOrder = new VoucherOrder();
-        voucherOrder.setId(orderId);
-        voucherOrder.setUserId(currentUserId);
-        voucherOrder.setVoucherId(voucherId);
-
-        orderTasks.add(voucherOrder);
-
-        // 获取代理事项(事务)
-        proxy = (IVoucherOrderService) AopContext.currentProxy();
-
-        // 3.返回订单id
-        return Result.ok(orderId);
-    }*/
-
-/*    @Override
-    public Result<Long> seckillVoucher(Long voucherId) {
-        // 1.查询优惠券
-        SeckillVoucher voucher = seckillVoucherService.getById(voucherId);
-
-        // 2.判断秒杀是否开始(如果开始时间大于当前时间,那就还没有开始,小于就开始)
-        if (voucher.getBeginTime().isAfter(LocalDateTime.now())) {
-            return Result.fail("秒杀未开始");
-        }
-
-        // 3.判断秒杀是否结束
-        if (voucher.getEndTime().isBefore(LocalDateTime.now())) {
-            return Result.fail("秒杀已结束");
-        }
-
-        // 4.判断库存是否充足
-        if (voucher.getStock() < 1) {
-            return Result.fail("库存不足");
-        }
-
-        Long userId = UserHolder.getUser().getId();
-
-        //创建锁对象
-        // SimpleRedisLock mylock = new SimpleRedisLock("order:" + userId, stringRedisTemplate);
-        RLock redissonClientLock = redissonClient.getLock("lock:order" + userId);
-
-        //获取锁
-        // boolean isLock = mylock.tryLock(7L);
-        boolean isLock = redissonClientLock.tryLock();
-
-        if (!isLock) {
-            //获取锁失败,返回错误或重试
-            return Result.fail("服务器繁忙,请稍后重试");
-        }
-
-        try {
-            // 获取事务有关的代理对象
-            IVoucherOrderService proxy = (IVoucherOrderService) AopContext.currentProxy();
-            return proxy.createVoucherOrder(voucherId);
-        } finally {
-            redissonClientLock.unlock();
-        }
-    }*/
 
     @Transactional
     public void createVoucherOrder(VoucherOrder voucherOrder) {
