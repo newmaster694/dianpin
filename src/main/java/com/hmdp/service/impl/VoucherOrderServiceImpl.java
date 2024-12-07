@@ -56,6 +56,14 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
 			return Result.fail("库存不足");
 		}
 		
+		//判断一人一单逻辑
+		Long currentUserId = UserHolder.getUser().getId();
+		Long count = this.query().eq("user_id", currentUserId).eq("voucher_id", voucherId).count();
+		
+		if (count > 0) {
+			return Result.fail("不允许重复购买");
+		}
+		
 		//扣减库存
 		boolean flag = seckillVoucherService.update()
 				.setSql("stock = stock - 1") //set stock = stock -1
