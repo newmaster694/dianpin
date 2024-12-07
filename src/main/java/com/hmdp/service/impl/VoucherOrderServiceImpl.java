@@ -8,9 +8,11 @@ import com.hmdp.mapper.VoucherOrderMapper;
 import com.hmdp.service.ISeckillVoucherService;
 import com.hmdp.service.IVoucherOrderService;
 import com.hmdp.utils.RedisIdWorker;
+import com.hmdp.utils.SimpleRedisLock;
 import com.hmdp.utils.UserHolder;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.aop.framework.AopContext;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,6 +36,9 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
 	
 	@Resource
 	private RedisIdWorker redisIdWorker;
+	
+	@Resource
+	private StringRedisTemplate stringRedisTemplate;
 	
 	/**
 	 * 秒杀下单方法-v1.0
@@ -59,9 +64,19 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
 		}
 		
 		Long currentUserId = UserHolder.getUser().getId();
-		synchronized (currentUserId.toString().intern()) {
+		SimpleRedisLock lock = new SimpleRedisLock(stringRedisTemplate, "order:" + currentUserId);
+		
+		boolean isLock = lock.tryLock(500L);
+		
+		if (!isLock) {
+			return Result.fail("不允许重复购买");
+		}
+		
+		try {
 			IVoucherOrderService proxy = (IVoucherOrderService) AopContext.currentProxy();
 			return proxy.createVoucherOrder(voucherId);
+		} finally {
+			lock.unlock();
 		}
 	}
 	
