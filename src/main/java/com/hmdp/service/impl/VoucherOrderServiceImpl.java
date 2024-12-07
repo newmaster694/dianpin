@@ -73,6 +73,7 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
 		}
 		
 		try {
+			//创建订单逻辑
 			IVoucherOrderService proxy = (IVoucherOrderService) AopContext.currentProxy();
 			return proxy.createVoucherOrder(voucherId);
 		} finally {
