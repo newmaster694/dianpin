@@ -10,7 +10,9 @@ import com.hmdp.service.IVoucherOrderService;
 import com.hmdp.utils.RedisIdWorker;
 import com.hmdp.utils.UserHolder;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.aop.framework.AopContext;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import javax.annotation.Resource;
 import java.time.LocalDateTime;
@@ -56,37 +58,48 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
 			return Result.fail("库存不足");
 		}
 		
-		//判断一人一单逻辑
 		Long currentUserId = UserHolder.getUser().getId();
-		Long count = this.query().eq("user_id", currentUserId).eq("voucher_id", voucherId).count();
-		
-		if (count > 0) {
-			return Result.fail("不允许重复购买");
+		synchronized (currentUserId.toString().intern()) {
+			IVoucherOrderService proxy = (IVoucherOrderService) AopContext.currentProxy();
+			return proxy.createVoucherOrder(voucherId);
 		}
-		
-		//扣减库存
-		boolean flag = seckillVoucherService.update()
-				.setSql("stock = stock - 1") //set stock = stock -1
-				.eq("voucher_id", voucherId).gt("stock", 0).update(); //where id = ? and stock > 0
-		
-		if (!flag) {
-			return Result.fail("库存不足");
-		}
-		
-		//创建订单
-		VoucherOrder voucherOrder = new VoucherOrder();
-		Long orderId = redisIdWorker.nextId("order");
-		voucherOrder
-				.setId(orderId)
-				.setUserId(UserHolder.getUser().getId())
-				.setVoucherId(voucherId);
-		
-		this.save(voucherOrder);
-		
-		return Result.ok(orderId);
 	}
 	
-	@Override
-	public void createVoucherOrder(VoucherOrder voucherOrder) {
+	/**
+	 * 创建订单方法
+	 * @param voucherId
+	 * @return
+	 */
+	@Transactional
+	public Result<Long> createVoucherOrder(Long voucherId) {
+		Long currentUserId = UserHolder.getUser().getId();
+		synchronized (currentUserId.toString().intern()) {
+			Long count = this.query().eq("user_id", currentUserId).eq("voucher_id", voucherId).count();
+			
+			if (count > 0) {
+				return Result.fail("不允许重复购买");
+			}
+			
+			//扣减库存
+			boolean flag = seckillVoucherService.update()
+					.setSql("stock = stock - 1") //set stock = stock -1
+					.eq("voucher_id", voucherId).gt("stock", 0).update(); //where id = ? and stock > 0
+			
+			if (!flag) {
+				return Result.fail("库存不足");
+			}
+			
+			//创建订单
+			VoucherOrder voucherOrder = new VoucherOrder();
+			Long orderId = redisIdWorker.nextId("order");
+			voucherOrder
+					.setId(orderId)
+					.setUserId(UserHolder.getUser().getId())
+					.setVoucherId(voucherId);
+			
+			this.save(voucherOrder);
+			
+			return Result.ok(orderId);
+		}
 	}
 }
