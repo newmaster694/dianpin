@@ -174,31 +174,19 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
 	 */
 	@Transactional
 	public void createVoucherOrder(VoucherOrder voucherOrder) {
-		Long currentUserId = voucherOrder.getUserId();
+		//扣减库存
+		boolean flag = seckillVoucherService.update()
+				.setSql("stock = stock - 1") //set stock = stock -1
+				.eq("voucher_id", voucherOrder.getVoucherId())
+				.gt("stock", 0)
+				.update(); //where id = ? and stock > 0
 		
-		//这里是原本保留一人一单的判断逻辑(基于查询MySQL的order表数据判断),如果想要提升性能,可以删除这个判断逻辑
-		synchronized (currentUserId.toString().intern()) {
-			Long count = this.query().eq("user_id", currentUserId).eq("voucher_id", voucherOrder.getVoucherId()).count();
-			
-			if (count > 0) {
-				log.error("不允许重复下单");
-				return;
-			}
-			
-			//扣减库存
-			boolean flag = seckillVoucherService.update()
-					.setSql("stock = stock - 1") //set stock = stock -1
-					.eq("voucher_id", voucherOrder.getVoucherId())
-					.gt("stock", 0)
-					.update(); //where id = ? and stock > 0
-			
-			if (!flag) {
-				log.error("库存不足");
-				return;
-			}
-			
-			//创建订单
-			this.save(voucherOrder);
+		if (!flag) {
+			log.error("库存不足");
+			return;
 		}
+		
+		//创建订单
+		this.save(voucherOrder);
 	}
 }
