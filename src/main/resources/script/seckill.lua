@@ -21,13 +21,13 @@ local stockKey = 'seckill:stock:' .. voucherId
 local orderKey = 'seckill:order:' .. voucherId
 
 -- 3.脚本业务
--- 3.1.判断库存是否充足 get stockKey
+-- 3.1.判断库存是否充足 get stockKey,tonumber关键字用于将返回的字符串类型转换为数值类型
 if(tonumber(redis.call('get', stockKey)) <= 0) then
     -- 3.2.库存不足，返回1
     return 1
 end
 
--- 3.2判断一人一单业务
+-- 3.2判断一人一单业务 SISMEMBER orderKey userId
 if (redis.call('sismember', orderKey, userId) == 1) then
     -- 存在,说明是重复下单,不允许,返回2
     return 2
@@ -40,6 +40,6 @@ redis.call('incrby', stockKey, -1)
 redis.call('sadd', orderKey, userId)
 
 -- 3.5 发送消息到消息队列中 XADD stream.orders * k1 v1 k2 v2 ...
-redis.call('xadd', 'stream.orders', '*', 'userId', userId, 'voucherId', voucherId, 'id', orderId)
+-- redis.call('xadd', 'stream.orders', '*', 'userId', userId, 'voucherId', voucherId, 'id', orderId)
 
 return 0
