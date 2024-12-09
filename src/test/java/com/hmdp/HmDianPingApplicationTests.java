@@ -41,11 +41,6 @@ class HmDianPingApplicationTests {
     @Resource
     private StringRedisTemplate stringRedisTemplate;
 
-    @Test
-    void testSaveShop() throws InterruptedException {
-        shopService.saveShop2Redis(1L, 10L);
-    }
-
     // 生成一个初始时间
     @Test
     void testLocalTime() {
