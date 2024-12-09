@@ -1,5 +1,6 @@
 package com.hmdp.service.impl;
 
+import cn.hutool.core.bean.BeanUtil;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.hmdp.dto.Result;
 import com.hmdp.entity.SeckillVoucher;
@@ -14,6 +15,7 @@ import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.springframework.aop.framework.AopContext;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.data.redis.connection.stream.*;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Service;
@@ -21,10 +23,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Collections;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -58,9 +61,6 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
 	//异步处理的线程池
 	private static final ExecutorService SKILL_ORDER_EXECUTOR = Executors.newSingleThreadExecutor();
 	
-	//阻塞队列
-	private BlockingQueue<VoucherOrder> orderTasks = new ArrayBlockingQueue<>(1024 * 1024);
-	
 	//初始化脚本
 	private static final DefaultRedisScript<Long> SECKILL_SCRIPT;
 	
@@ -77,16 +77,76 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
 	
 	private class VoucherOrderHandler implements Runnable {
 		
+		String queueName = "stream.orders";
+		
 		@Override
 		public void run() {
 			while (true) {
 				try {
-					//获取阻塞队列中的订单信息
-					VoucherOrder voucherOrder = orderTasks.take();
+					//获取redis消息队列中的信息
+					List<MapRecord<String, Object, Object>> list = stringRedisTemplate.opsForStream().read(
+							Consumer.from("g1", "c1"),
+							StreamReadOptions.empty().count(1).block(Duration.ofSeconds(2)),
+							StreamOffset.create(queueName, ReadOffset.lastConsumed())
+					);
+					
+					//判断消息是否获取成功
+					if (list == null || list.isEmpty()) {
+						//获取失败,说明没有消息,继续循环
+						continue;
+					}
+					
+					//获取成功,解析出消息队列中的订单信息;第一个是消息的ID,剩下的是解析出的数据
+					MapRecord<String, Object, Object> entries = list.get(0);
+					Map<Object, Object> value = entries.getValue();
+					VoucherOrder voucherOrder = BeanUtil.fillBeanWithMap(value, new VoucherOrder(), true);
+					
+					//获取成功,创建订单
 					handlerVoucherOrder(voucherOrder);
-					//创建订单
-				} catch (InterruptedException e) {
-					log.error("处理订单异常");
+					
+					//ACK确认,否则消息会进入pending-list
+					stringRedisTemplate.opsForStream().acknowledge(queueName, "g1", entries.getId());
+				} catch (Exception e) {
+					log.error("处理订单异常", e);
+					//处理异常->去pending-list里获取订单信息处理
+					handlePendingList();
+				}
+			}
+		}
+		
+		private void handlePendingList() {
+			while (true) {
+				try {
+					//获取redis pendlist 队列中的信息
+					List<MapRecord<String, Object, Object>> list = stringRedisTemplate.opsForStream().read(
+							Consumer.from("g1", "c1"),
+							StreamReadOptions.empty().count(1),
+							StreamOffset.create(queueName, ReadOffset.from("0"))
+					);
+					
+					//判断消息是否获取成功
+					if (list == null || list.isEmpty()) {
+						//获取失败,说明pendinglist没有消息,结束循环
+						break;
+					}
+					
+					//获取成功,解析出消息队列中的订单信息;第一个是消息的ID,剩下的是解析出的数据
+					MapRecord<String, Object, Object> entries = list.get(0);
+					Map<Object, Object> value = entries.getValue();
+					VoucherOrder voucherOrder = BeanUtil.fillBeanWithMap(value, new VoucherOrder(), true);
+					
+					//获取成功,创建订单
+					handlerVoucherOrder(voucherOrder);
+					
+					//ACK确认,否则消息会进入pending-list
+					stringRedisTemplate.opsForStream().acknowledge(queueName, "g1", entries.getId());
+				} catch (Exception e) {
+					log.error("处理pending-list订单异常", e);
+					try {
+						Thread.sleep(20);
+					} catch (InterruptedException ex) {
+						throw new RuntimeException(ex);
+					}
 				}
 			}
 		}
@@ -145,21 +205,11 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
 				voucherId.toString(), currentUserId.toString(), String.valueOf(orderId)
 		);
 		
-		int r = result.intValue();
+		int r = result != null ? result.intValue() : 0;
 		
 		if (r != 0) {
 			return Result.fail(r == 1 ? "库存不足" : "不允许重复下单");
 		}
-		
-		//创建订单
-		VoucherOrder voucherOrder = new VoucherOrder();
-		voucherOrder
-				.setId(orderId)
-				.setUserId(currentUserId)
-				.setVoucherId(voucherId);
-		
-		//放入阻塞队列
-		orderTasks.add(voucherOrder);
 		
 		proxy = (IVoucherOrderService) AopContext.currentProxy();
 		
