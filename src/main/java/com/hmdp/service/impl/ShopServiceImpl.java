@@ -1,13 +1,13 @@
 package com.hmdp.service.impl;
 
 import cn.hutool.core.util.StrUtil;
-import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.hmdp.dto.Result;
 import com.hmdp.entity.Shop;
 import com.hmdp.mapper.ShopMapper;
 import com.hmdp.service.IShopService;
+import com.hmdp.utils.CacheClient;
 import com.hmdp.utils.SystemConstants;
 import org.springframework.data.geo.Distance;
 import org.springframework.data.geo.GeoResult;
@@ -37,29 +37,20 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
     @Resource
     private StringRedisTemplate stringRedisTemplate;
     
+    @Resource
+    private CacheClient cacheClient;
+    
 
     @Override
     public Result<Shop> queryById(Long id) {
-        String key = CACHE_SHOP_KEY + id;
-        
-        String shopJson = stringRedisTemplate.opsForValue().get(key);
-        
-        if (StrUtil.isNotBlank(shopJson)) {
-            return Result.ok(JSONUtil.toBean(shopJson, Shop.class));
-        }
-        
-        Shop shop = this.getById(id);
-        
-        if (shop == null) {
-            return Result.fail("店铺不存在");
-        }
-        
-        stringRedisTemplate.opsForValue()
-                .set(
-                        key,
-                        JSONUtil.toJsonStr(shop),
-                        CACHE_SHOP_TTL,
-                        TimeUnit.MINUTES);
+        Shop shop = cacheClient.queryWithPassThrough(
+                CACHE_SHOP_KEY,
+                id,
+                Shop.class,
+                this::getById,//方法引用传入一个函数,
+                CACHE_SHOP_TTL,
+                TimeUnit.MINUTES
+        );
         
         return Result.ok(shop);
     }
