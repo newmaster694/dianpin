@@ -118,6 +118,7 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
 			while (true) {
 				try {
 					//获取redis pendlist 队列中的信息
+					log.info("获取redis pendlist 队列中的信息");
 					List<MapRecord<String, Object, Object>> list = stringRedisTemplate.opsForStream().read(
 							Consumer.from("g1", "c1"),
 							StreamReadOptions.empty().count(1),
@@ -170,6 +171,7 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
 			
 			try {
 				//创建订单逻辑
+				log.info("MySQL数据库创建订单");
 				proxy.createVoucherOrder(voucherOrder);
 			} finally {
 				redisLock.unlock();
@@ -199,6 +201,7 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
 		}
 		
 		//执行lua脚本
+		log.info("Redis操作=>判断库存,一人一单");
 		Long result = stringRedisTemplate.execute(
 				SECKILL_SCRIPT,
 				Collections.emptyList(),
