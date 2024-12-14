@@ -2,17 +2,20 @@ package com.hmdp.service.impl;
 
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.hmdp.dto.Result;
+import com.hmdp.dto.SeckillVoucherTimeDto;
 import com.hmdp.entity.Voucher;
 import com.hmdp.mapper.VoucherMapper;
 import com.hmdp.entity.SeckillVoucher;
 import com.hmdp.service.ISeckillVoucherService;
 import com.hmdp.service.IVoucherService;
+import com.hmdp.utils.CacheClient;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import javax.annotation.Resource;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import static com.hmdp.utils.RedisConstants.SECKILL_STOCK_KEY;
 
@@ -32,6 +35,9 @@ public class VoucherServiceImpl extends ServiceImpl<VoucherMapper, Voucher> impl
 
     @Resource
     private StringRedisTemplate stringRedisTemplate;
+    
+    @Resource
+    private CacheClient cacheClient;
 
     @Override
     public Result<List<Voucher>> queryVoucherOfShop(Long shopId) {
@@ -53,8 +59,15 @@ public class VoucherServiceImpl extends ServiceImpl<VoucherMapper, Voucher> impl
         seckillVoucher.setBeginTime(voucher.getBeginTime());
         seckillVoucher.setEndTime(voucher.getEndTime());
         seckillVoucherService.save(seckillVoucher);
+        
+        SeckillVoucherTimeDto seckillVoucherTimeDto = new SeckillVoucherTimeDto()
+                .setBeginTime(voucher.getBeginTime())
+                .setEndTime(voucher.getEndTime());
 
         //保存秒杀的库存保存到Redis中,不设置有效期,将来手动删除
         stringRedisTemplate.opsForValue().set(SECKILL_STOCK_KEY + voucher.getId(), voucher.getStock().toString());
+        
+        //保存秒杀优惠卷的时间信息到Redis中
+        cacheClient.set("seckill:time" + voucher.getId(), seckillVoucherTimeDto, -1L, TimeUnit.MINUTES);
     }
 }

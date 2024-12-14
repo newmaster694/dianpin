@@ -1,9 +1,10 @@
 package com.hmdp.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.hmdp.dto.Result;
-import com.hmdp.entity.SeckillVoucher;
+import com.hmdp.dto.SeckillVoucherTimeDto;
 import com.hmdp.entity.VoucherOrder;
 import com.hmdp.mapper.VoucherOrderMapper;
 import com.hmdp.service.ISeckillVoucherService;
@@ -187,16 +188,19 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
 	 */
 	@Override
 	public Result<Long> seckillVoucher(Long voucherId) {
-		SeckillVoucher voucher = seckillVoucherService.getById(voucherId);
+		String timeJson = stringRedisTemplate.opsForValue().get("seckill:time" + voucherId);
+		SeckillVoucherTimeDto seckillVoucherTimeDto = JSONUtil
+				.toBean(timeJson, SeckillVoucherTimeDto.class);
+		
 		Long orderId = redisIdWorker.nextId("order");
 		Long currentUserId = UserHolder.getUser().getId();
 		
 		//判断是否符合购买资格
-		if (voucher.getBeginTime().isAfter(LocalDateTime.now())) {
+		if (seckillVoucherTimeDto.getBeginTime().isAfter(LocalDateTime.now())) {
 			return Result.fail("秒杀未开始");
 		}
 		
-		if (voucher.getEndTime().isBefore(LocalDateTime.now())) {
+		if (seckillVoucherTimeDto.getEndTime().isBefore(LocalDateTime.now())) {
 			return Result.fail("秒杀已结束");
 		}
 		
