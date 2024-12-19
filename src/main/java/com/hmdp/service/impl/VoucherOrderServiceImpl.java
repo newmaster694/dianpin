@@ -1,10 +1,8 @@
 package com.hmdp.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
-import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.hmdp.dto.Result;
-import com.hmdp.dto.SeckillVoucherTimeDto;
 import com.hmdp.entity.VoucherOrder;
 import com.hmdp.mapper.VoucherOrderMapper;
 import com.hmdp.service.ISeckillVoucherService;
@@ -25,7 +23,6 @@ import org.springframework.transaction.annotation.Transactional;
 import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 import java.time.Duration;
-import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -188,21 +185,8 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
 	 */
 	@Override
 	public Result<Long> seckillVoucher(Long voucherId) {
-		String timeJson = stringRedisTemplate.opsForValue().get("seckill:time" + voucherId);
-		SeckillVoucherTimeDto seckillVoucherTimeDto = JSONUtil
-				.toBean(timeJson, SeckillVoucherTimeDto.class);
-		
 		Long orderId = redisIdWorker.nextId("order");
 		Long currentUserId = UserHolder.getUser().getId();
-		
-		//判断是否符合购买资格
-		if (seckillVoucherTimeDto.getBeginTime().isAfter(LocalDateTime.now())) {
-			return Result.fail("秒杀未开始");
-		}
-		
-		if (seckillVoucherTimeDto.getEndTime().isBefore(LocalDateTime.now())) {
-			return Result.fail("秒杀已结束");
-		}
 		
 		//执行lua脚本
 		log.info("Redis操作=>判断库存,一人一单");
@@ -212,10 +196,17 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
 				voucherId.toString(), currentUserId.toString(), String.valueOf(orderId)
 		);
 		
-		int r = result != null ? result.intValue() : 0;
+		int r = result.intValue();
 		
 		if (r != 0) {
-			return Result.fail(r == 1 ? "库存不足" : "不允许重复下单");
+			switch (r) {
+				case 1:
+					return Result.fail("还未到秒杀时间,请稍后再试哦");
+				case 2:
+					return Result.fail("库存不足了,请不要再试了/ᐠ .ᆺ. ᐟ\\ﾉ");
+				case 3:
+					return Result.fail("你已经下过单了,给别人留点机会吧⋛⋋( ‘Θ’)⋌⋚");
+			}
 		}
 		
 		proxy = (IVoucherOrderService) AopContext.currentProxy();
