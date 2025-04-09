@@ -46,10 +46,10 @@
 
 以下为本项目的主要构建工具
 
-[![Java][java-shield]][java-url]
-[![Spring][Spring Boot-shield]][Spring Boot-url]
-[![Redis][Redis-shield]][Redis-url]
-[![MySQL][MySQL-shield]][MySQL-url]
+[![Java][java-shield]][java-url]<br>
+[![Spring][Spring Boot-shield]][Spring Boot-url]<br>
+[![Redis][Redis-shield]][Redis-url]<br>
+[![MySQL][MySQL-shield]][MySQL-url]<br>
 
 <!-- GETTING STARTED -->
 ## Getting Started
