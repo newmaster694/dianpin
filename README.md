@@ -14,7 +14,7 @@
     <a href="https://github.com/newmaster694/dianpin"><strong>Explore the docs »</strong></a>
     <br />
     <br />
-    <a href="http://47.83.141.64">示例网站</a>
+    <a href="http://47.83.141.64:80">示例网站</a>
     &middot;
     <a href="https://github.com/newmaster694/dianpin/issues/new?labels=bug&template=bug-report---.md">提交问题</a>
   </p>
@@ -52,38 +52,46 @@
 [![MySQL][MySQL-shield]][MySQL-url]<br>
 
 <!-- GETTING STARTED -->
-## Getting Started
+## 快速开始
 
 这一部分会告诉你如何在本地快速启动这个后端服务
 
 ### 准备工作
 
-This is an example of how to list things you need to use the software and how to install them.
+1. 本项目依赖于 MySQL 5.7 与 Redis 7.4.0 请在开始前确认你已在本地启动好相应的服务
+2. 使用`git clone`命令将项目克隆到本地
+3. 本项目中使用到了Redis的stream流实现简单的消息队列,如果直接启动项目会报错,解决方式如下:
+   - 在`redis-cli`中使用命令`xgroup create stream.orders g1 0 MKSTREAM`创建消息队列
+   - 注释掉`VoucherOrderServiceImpl.java`中的两个`while(true)`循环(简单启动,但是不推荐此做法,会失去下单功能)
+4. 运行`src/test/java/com/hmdp/HmDianPingApplicationTests.java`中的`shopLoadData()`方法,导入Redis GEO数据
 
 ### 安装环境
+
+本项目采用maven管理依赖,在使用前请确保你已安装并启动maven环境,以下两种方式导入项目依赖
+- 将项目导入到支持maven环境开发的IDE中例如:[![IDEA][IDEA-shield]][IDEA-url],使用IDE自带工具导入项目依赖
+- 进入项目根目录,运行`call mvn -f pom.xml dependency:copy-dependencies`命令安装依赖
 
 
 <!-- USAGE EXAMPLES -->
 ## 使用
 
-
-<!-- ROADMAP -->
-## 路线图
-
-
+- 在根目录下编译项目
+  ```mvn compile```
+- 打包项目
+  ```mvn package```
+- 运行项目
+  ```java -jar xxx.jar```
 
 <!-- LICENSE -->
 ## 使用的开源许可证
 
-Distributed under the Unlicense License. See `LICENSE.txt` for more information.
-
+本项目采用`MIT License`开源许可证,详细信息请见[文件](LICENSE)
 
 <!-- CONTACT -->
 ## 联系
 
-cryingsky.47@icloud.com
-
-Project Link: [https://github.com/newmaster694/dianpin](https://github.com/newmaster694/dianpin)
+- 邮箱:cryingsky.47@icloud.com
+- Project Link: [https://github.com/newmaster694/dianpin](https://github.com/newmaster694/dianpin)
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -92,8 +100,10 @@ Project Link: [https://github.com/newmaster694/dianpin](https://github.com/newma
 [Spring Boot-shield]:https://img.shields.io/badge/Spring%20Boot-2.3.12-6DB33F?style=for-the-badge&logo=spring-boot&logoColor=white
 [Redis-shield]:https://img.shields.io/badge/Redis-7.4.0-DC382D?style=for-the-badge&logo=redis&logoColor=white
 [MySQL-shield]:https://img.shields.io/badge/MySQL-8.1.0-4479A1?style=flat&logo=mysql&logoColor=white
+[IDEA-shield]:https://img.shields.io/badge/IntelliJ%20IDEA-black?style=flat-square&logo=IntelliJ%20IDEA&logoColor=ffffff
 
 [java-url]:https://www.oracle.com/cn/java/technologies/downloads/
 [Spring Boot-url]:https://spring.io/projects/spring-boot
 [Redis-url]:https://redis.io/
 [MySQL-url]:https://www.mysql.com/
+[IDEA-url]:https://www.jetbrains.com/zh-cn/idea/download/?section=windows
