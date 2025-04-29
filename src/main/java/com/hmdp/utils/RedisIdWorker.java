@@ -35,7 +35,9 @@ public class RedisIdWorker {
         long timestamp = nowSecond - BEGIN_TIMESTAMP;
 
         //2.生成序列号
-        //2.1.获取当前日期->精确到天
+        //2.1.获取当前日期->精确到天->统计每天的订单(Redis的incrby的自增长是有限制的,大小为 2^64 )
+        //为了不超过这个范围,哪怕是同一个业务也要加上当天的时间戳(只统计当天生成的ID),过一天就统计下一天的id
+        //中间使用冒号隔开是为了便于 Redis 根据键值统计
         String date = now.format(DateTimeFormatter.ofPattern("yyyy:MM:dd"));
         //2.2.自增长
         long count = stringRedisTemplate.opsForValue().increment("icr:" + keyPrefix + ":" + date);

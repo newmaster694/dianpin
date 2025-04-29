@@ -94,8 +94,8 @@ public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, Vou
 						continue;
 					}
 					
-					//获取成功,解析出消息队列中的订单信息;第一个是消息的ID,剩下的是解析出的数据
-					MapRecord<String, Object, Object> entries = list.get(0);
+					//获取成功,解析出消息队列中的订单信息;第一个是消息的ID(MapRecord中的<String>),剩下的是解析出的数据
+					MapRecord<String, Object, Object> entries = list.get(0);//这里get(0)是因为我们知道每次只从消息队列中获取一条消息,所以get角标0
 					Map<Object, Object> value = entries.getValue();
 					VoucherOrder voucherOrder = BeanUtil.fillBeanWithMap(value, new VoucherOrder(), true);
 					

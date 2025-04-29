@@ -2,6 +2,7 @@ package com.hmdp.controller;
 
 
 import cn.hutool.core.bean.BeanUtil;
+import com.hmdp.annotation.Limit;
 import com.hmdp.dto.LoginFormDTO;
 import com.hmdp.dto.Result;
 import com.hmdp.dto.UserDTO;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpSession;
+import java.util.concurrent.TimeUnit;
 
 /**
  * <p>
@@ -39,7 +41,8 @@ public class UserController {
      * 发送手机验证码
      */
     @PostMapping("/code")
-    public Result<Object> sendCode(@RequestParam("phone") String phone, HttpSession session) {
+    @Limit(key = "phoneCode", permitsPerSecond = 2, timeout = 500, timeunit = TimeUnit.MICROSECONDS)
+    public Result<Object> sendCode(@RequestParam("phone") String phone, HttpSession session) throws Exception {
         // 发送短信验证码并保存验证码
         return userService.sendCode(phone, session);
     }

@@ -71,8 +71,8 @@
 - 将项目导入到支持maven环境开发的IDE中例如:[![IDEA][IDEA-shield]][IDEA-url],使用IDE自带工具导入项目依赖
 - 进入项目根目录,运行`call mvn -f pom.xml dependency:copy-dependencies`命令安装依赖
 
-
 <!-- USAGE EXAMPLES -->
+
 ## 使用
 
 - 在根目录下编译项目

@@ -63,6 +63,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         stringRedisTemplate.opsForValue().set(LOGIN_CODE_KEY + phone, code, LOGIN_CODE_TTL, TimeUnit.MINUTES);
 
         // TODO 4.发送验证码(调用第三方的平台)
+        //AliSmsUtil.sendMsg(code, phone);
         log.info("短信发送成功,验证码:{}", code);
 
         // 5.返回成功信息

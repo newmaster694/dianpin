@@ -34,3 +34,4 @@ build/
 ### VS Code ###
 .vscode/
 **/src/test/
+/项目文档.md

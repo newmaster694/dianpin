@@ -96,7 +96,7 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
 			boolean isSuccess = update().setSql("liked = liked + 1").eq("id", id).update();
 			
 			if (isSuccess) {
-				// 更新成功,保存用户到Redis集合中 zadd key value score
+				// 更新成功,保存用户到Redis集合中 zadd key value score(这里我们的排序方式按照当前时间顺序进行排序(也就是第一名是最先点赞的))
 				stringRedisTemplate.opsForZSet().add(Key, userId.toString(), System.currentTimeMillis());
 			}
 		} else {

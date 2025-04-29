@@ -8,7 +8,7 @@ import org.springframework.context.annotation.EnableAspectJAutoProxy;
 
 @MapperScan("com.hmdp.mapper")
 @SpringBootApplication
-@EnableAspectJAutoProxy(exposeProxy = true)
+@EnableAspectJAutoProxy(exposeProxy = true) //暴露代理对象注解
 @Slf4j
 public class HmDianPingApplication {
 
