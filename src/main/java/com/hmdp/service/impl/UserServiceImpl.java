@@ -12,6 +12,7 @@ import com.hmdp.dto.UserDTO;
 import com.hmdp.entity.User;
 import com.hmdp.mapper.UserMapper;
 import com.hmdp.service.IUserService;
+import com.hmdp.utils.AliSmsUtil;
 import com.hmdp.utils.RegexUtils;
 import com.hmdp.utils.UserHolder;
 import lombok.extern.slf4j.Slf4j;
@@ -44,9 +45,12 @@ import static com.hmdp.utils.SystemConstants.USER_NICK_NAME_PREFIX;
 public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IUserService {
     @Resource
     private StringRedisTemplate stringRedisTemplate;
+    
+    @Resource
+    private AliSmsUtil aliSmsUtil;
 
     @Override
-    public Result<Object> sendCode(String phone, HttpSession session) {
+    public Result<Object> sendCode(String phone, HttpSession session) throws Exception {
         // 1.校验登录手机号
         if (RegexUtils.isPhoneInvalid(phone)) {
             // 2.如果登录手机号不符合,返回错误信息
@@ -62,8 +66,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         // 3.2保存验证码到Redis
         stringRedisTemplate.opsForValue().set(LOGIN_CODE_KEY + phone, code, LOGIN_CODE_TTL, TimeUnit.MINUTES);
 
-        // TODO 4.发送验证码(调用第三方的平台)
-        //AliSmsUtil.sendMsg(code, phone);
+        // 4.发送验证码(调用第三方的平台)
+        aliSmsUtil.sendMsg(code, phone);
         log.info("短信发送成功,验证码:{}", code);
 
         // 5.返回成功信息
