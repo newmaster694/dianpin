@@ -35,3 +35,4 @@ build/
 .vscode/
 **/src/test/
 /项目文档.md
+/src/main/resources/application.properties
