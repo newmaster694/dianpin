@@ -9,6 +9,7 @@ import com.hmdp.service.ISeckillVoucherService;
 import com.hmdp.service.IVoucherOrderService;
 import com.hmdp.utils.RedisIdWorker;
 import com.hmdp.utils.UserHolder;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
@@ -21,7 +22,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import javax.annotation.PostConstruct;
-import javax.annotation.Resource;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
@@ -39,19 +39,13 @@ import java.util.concurrent.Executors;
  */
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class VoucherOrderServiceImpl extends ServiceImpl<VoucherOrderMapper, VoucherOrder> implements IVoucherOrderService {
 	
-	@Resource
-	private ISeckillVoucherService seckillVoucherService;
-	
-	@Resource
-	private RedisIdWorker redisIdWorker;
-	
-	@Resource
-	private StringRedisTemplate stringRedisTemplate;
-	
-	@Resource
-	private RedissonClient redissonClient;
+	private final ISeckillVoucherService seckillVoucherService;
+	private final RedisIdWorker redisIdWorker;
+	private final StringRedisTemplate stringRedisTemplate;
+	private final RedissonClient redissonClient;
 	
 	//代理对象
 	IVoucherOrderService proxy;
