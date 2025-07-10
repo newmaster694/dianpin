@@ -31,7 +31,7 @@ public class LimitAOP {
 	 */
 	private final Map<String, RateLimiter> limiterMap = Maps.newConcurrentMap();
 	
-	@Around("@annotation(com.hmdp.annotation.Limit)")
+	@Around("@annotation(com.hmdp.annotation.Limit)")//其实这里的around改成before也可以
 	public Object around(ProceedingJoinPoint joinPoint) throws Throwable {
 		MethodSignature signature = (MethodSignature) joinPoint.getSignature();
 		Method method = signature.getMethod();
